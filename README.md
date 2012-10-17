@@ -2,6 +2,8 @@
 ## Base classes for the Kohana applications
 ### Usage:
 <pre><code>
+<?php
+
 // Register the Error shutdown function in bootstrap.php before Kohana::init();
 
 if (Kohana::$environment === Kohana::PRODUCTION)
