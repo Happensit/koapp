@@ -1,5 +1,5 @@
 # KoApp
-## Base classes for the Kohana applications
+## Base classes for building web applications with Kohana
 ### Usage:
 
 ```php
