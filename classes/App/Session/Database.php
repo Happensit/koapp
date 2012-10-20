@@ -149,8 +149,6 @@ class App_Session_Database extends Session {
 
             $query = DB::query(Database::UPDATE, $sql);
 
-            $values = array_values($this->columns);
-
             $query->parameters($parameters + array(':old_session_id' => $this->update_id));
         }
 
@@ -213,5 +211,5 @@ class App_Session_Database extends Session {
 
         return TRUE;
     }
-	
+
 } // END class App_Session_Database
