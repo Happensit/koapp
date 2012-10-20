@@ -19,11 +19,11 @@ class App_Session_Database extends Session {
     protected $table = 'sessions';
 
     protected $columns = array(
-        'session_id'  => 'session_id',
-        'ip_address'  => 'ip_address',
-        'user_agent'  => 'user_agent',
-        'last_active' => 'last_active',
-        'contents'    => 'contents',
+        'session_id'  => ':session_id',
+        'ip_address'  => ':ip_address',
+        'user_agent'  => ':user_agent',
+        'last_active' => ':last_active',
+        'contents'    => ':contents',
     );
 
     protected $gc = 500;
@@ -56,7 +56,7 @@ class App_Session_Database extends Session {
 
         if (mt_rand(0, $this->gc) == $this->gc)
         {
-            $this->gc();
+            $this->_gc();
         }
     }
 
@@ -71,9 +71,9 @@ class App_Session_Database extends Session {
     {
         if ($id OR $id = Cookie::get($this->_name))
         {
-            $sql = "SELECT contents FROM ".$this->table." WHERE session_id = :id LIMIT 1";
+            $sql = "SELECT contents FROM ".$this->table." WHERE session_id = :session_id LIMIT 1";
 
-            $result = DB::query(Database::SELECT, $sql)->param(':id', $id)->execute($this->db);
+            $result = DB::query(Database::SELECT, $sql)->param(':session_id', $id)->execute($this->db);
 
             if ($result->count())
             {
@@ -91,9 +91,9 @@ class App_Session_Database extends Session {
 
     protected function _regenerate()
     {
-        $sql = "SELECT session_id FROM ".$this->table." WHERE session_id = :id LIMIT 1";
+        $sql = "SELECT session_id FROM ".$this->table." WHERE session_id = :session_id LIMIT 1";
 
-        $query = DB::query(Database::SELECT, $sql)->bind(':id', $id);
+        $query = DB::query(Database::SELECT, $sql)->bind(':session_id', $id);
 
         do
         {
@@ -109,33 +109,50 @@ class App_Session_Database extends Session {
 
     protected function _write()
     {
+        $keys = array_keys($this->columns);
+        $vals = array_values($this->columns);
+
+        $parameters = array(
+            $vals[0] => $this->session_id,
+            $vals[1] => Request::$client_ip,
+            $vals[2] => Request::$user_agent,
+            $vals[3] => $this->_data['last_active'],
+            $vals[4] => $this->__toString()
+        );
+
         if ($this->update_id === NULL)
         {
-            $query = DB::insert($this->table, $this->columns)
-                ->values(array(':new_id', ':hostname', ':useragent', ':active', ':contents'));
+            $columns = '('.implode(', ', $keys).')';
+            $values  = '('.implode(', ', $vals).')';
+
+            $sql = "INSERT INTO ".$this->table." ".$columns." VALUES ".$values;
+
+            $query = DB::query(Database::INSERT, $sql)->parameters($parameters);
         }
         else
         {
-            $query = DB::update($this->table)
-                ->value('ip_address', ':hostname')
-                ->value('user_agent', ':useragent')
-                ->value('last_active', ':active')
-                ->value('contents', ':contents')
-                ->where('session_id', '=', ':old_id');
-
-            if ($this->update_id !== $this->session_id)
+            if ($this->update_id == $this->session_id)
             {
-                $query->value($this->columns['session_id'], ':new_id');
+                unset($this->columns['session_id']);
             }
-        }
 
-        $query
-            ->param(':new_id', $this->session_id)
-            ->param(':old_id', $this->update_id)
-            ->param(':hostname', Request::$client_ip)
-            ->param(':useragent', Request::$user_agent)
-            ->param(':active', $this->_data['last_active'])
-            ->param(':contents', $this->__toString());
+            $updates = '';
+
+            foreach ($this->columns AS $key => $val)
+            {
+                $updates .= $key.' = '.$val.', ';
+            }
+
+            $updates = substr($updates, 0, -2);
+
+            $sql = "UPDATE ".$this->table." SET ".$updates." WHERE session_id = :old_session_id";
+
+            $query = DB::query(Database::UPDATE, $sql);
+
+            $values = array_values($this->columns);
+
+            $query->parameters($parameters + array(':old_session_id' => $this->update_id));
+        }
 
         $query->execute($this->db);
 
@@ -154,9 +171,9 @@ class App_Session_Database extends Session {
             return TRUE;
         }
 
-        $query = DB::delete($this->table)
-            ->where('session_id', '=', ':id')
-            ->param(':id', $this->update_id);
+        $sql = "DELETE FROM ".$this->table." WHERE session_id = :session_id";
+
+        $query = DB::query(Database::DELETE, $sql)->param(':session_id', $this->update_id);
 
         try
         {
@@ -184,10 +201,9 @@ class App_Session_Database extends Session {
             $expires = Date::MONTH;
         }
 
-        DB::delete($this->table)
-            ->where('last_active', '<', ':time')
-            ->param(':time', time() - $expires)
-            ->execute($this->db);
+        $sql = "DELETE FROM ".$this->table." WHERE last_active < :time";
+
+        $query = DB::query(Database::DELETE, $sql)->param(':time', time() - $expires)->execute($this->db);
     }
 
 
