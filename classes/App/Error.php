@@ -2,7 +2,7 @@
 
 abstract class App_Error {
 
-    public static $error_view   = 'errors/500';
+    public static $error_view   = 'error/500';
     public static $content_type = 'text/html';
 
     /**
@@ -51,11 +51,22 @@ abstract class App_Error {
     {
         try
         {
-            $response = Response::factory();
-            $response->status(500);
-            $response->headers('Content-Type', static::$content_type.'; charset='.Kohana::$charset);
-            $view = View::factory(static::$error_view);
-            $response->body($view->render());
+            if ( ! Request::current()->is_ajax())
+            {
+                $response = Response::factory();
+                $response->status(500);
+                $response->headers('Content-Type', static::$content_type.'; charset='.Kohana::$charset);
+                $view = View::factory(static::$error_view);
+                $response->body($view->render());
+            }
+            else
+            {
+                $response = Response::factory();
+                $response->status(200);
+                $response->headers('Content-Type', static::$content_type.'; charset='.Kohana::$charset);
+                $response->headers('Content-Type', 'text/plain');
+                $response->body('Server not responding!');
+            }
         }
         catch (Exception $e)
         {

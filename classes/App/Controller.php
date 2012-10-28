@@ -5,9 +5,6 @@ abstract class App_Controller extends Kohana_Controller {
     protected $output = NULL;
     protected $render = TRUE;
 
-    protected $init = TRUE;
-    protected $ajax = TRUE;
-
     /**
     * Loads the Output as object.
     *
@@ -17,11 +14,9 @@ abstract class App_Controller extends Kohana_Controller {
     {
         parent::before();
 
-        // Automatic filtering the type of request before the controller action.
-        if (($this->request->is_ajax() AND $this->ajax !== TRUE) OR
-            ($this->request->is_initial() AND $this->init !== TRUE))
+        if ($this->request->is_ajax())
         {
-            throw HTTP_Exception::factory(403)->request($this->request);
+            $this->render = FALSE;
         }
 
         if ($this->request->is_initial() AND $this->render === TRUE)
@@ -102,7 +97,7 @@ abstract class App_Controller extends Kohana_Controller {
         }
     }
 
-    protected function inject_script($file, $data)
+    protected function inject_script($file, $data = NULL)
     {
         $view = new View($file, array('data' => $data));
 

@@ -4,14 +4,14 @@ class HTTP_Exception_404 extends Kohana_HTTP_Exception_404 {
 
     public function get_response()
     {
-        if (Kohana::$environment >= Kohana::DEVELOPMENT)
+        if (Kohana::$environment !== Kohana::PRODUCTION)
         {
             return parent::get_response();
         }
 
-        if ($this->_request->is_initial())
+        if (Request::current()->is_initial() AND ! Request::current()->is_ajax())
         {
-            $view = View::factory('errors/404');
+            $view = View::factory('error/404');
 
             $response = Response::factory()
                 ->status(404)
